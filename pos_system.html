@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>نظام محاسبي وإدارة مبيعات</title>
+<style>
+/* ---- عام ---- */
+body{font-family:Tahoma, Arial;margin:0;padding:0;background:#f4f4f4;color:#333}
+.container{max-width:1200px;margin:auto;padding:20px}
+h1,h2{margin:10px 0}
+.btn{display:inline-block;padding:8px 15px;margin:2px;border:none;cursor:pointer;border-radius:3px}
+.btn-primary{background:#007bff;color:#fff}
+.btn-danger{background:#dc3545;color:#fff}
+.btn-success{background:#28a745;color:#fff}
+.btn-warning{background:#ffc107;color:#333}
+
+/* ---- دمج شبكة ---- */
+.flex{display:flex;flex-wrap:wrap;gap:15px}
+.card{background:#fff;padding:15px;border-radius:5px;box-shadow:0 0 5px rgba(0,0,0,.1);flex:1}
+
+/* ---- جدول ---- */
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px;border:1px solid #ddd;text-align:center}
+
+/* RTL adjustments */
+input,select,textarea{direction:rtl;text-align:right}
+
+/* تنبيه الكمية المنخفضة */
+.low-stock{background:#fff3cd}
+
+/* responsive */
+@media(max-width:768px){
+    .flex{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>نظام المحاسبة وإدارة المبيعات</h1>
+
+    <!-- لوحة dashboard -->
+    <div class="card" id="dashboard">
+        <h2>لوحة المعلومات</h2>
+        <p>إجمالي المبيعات: <span id="totalSales">0</span></p>
+        <p>إجمالي الأرباح الصافية: <span id="totalProfit">0</span></p>
+        <p>عدد القطع المباعة: <span id="itemsSold">0</span></p>
+    </div>
+
+    <!--_TAB_SWITCH-->
+    <div class="flex">
+        <button class="btn btn-primary" onclick="showSection('pos')">الكاشير</button>
+        <button class="btn btn-primary" onclick="showSection('inventory')">المخزون</button>
+        <button class="btn btn-primary" onclick="showSection('history')">سجل العمليات</button>
+    </div>
+
+    <!-- واجهة الكاشير -->
+    <div id="pos" class="card section">
+        <h2>نقطة البيع</h2>
+        <input type="text" id="search" placeholder="ابحث عن منتج..." oninput="searchProduct()" />
+        <select id="productList"></select>
+        <button class="btn btn-success" onclick="addItem()">إضافة</button>
+        <table id="invoice">
+            <thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>حذف</th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <p>المجموع: <span id="subTotal">0</span></p>
+        <p>الضريبة (%) <input type="number" id="taxRate" value="0" min="0" onchange="updateTotals()"/></p>
+        <p>الإجمالي الكلي: <span id="total">0</span></p>
+        <p>المبلغ المدفوع: <input type="number" id="paid" value="0" min="0" onchange="updateTotals()"/></p>
+        <p>المتبقي: <span id="remaining">0</span></p>
+        <button class="btn btn-primary" onclick="completeSale()">إتمام البيع</button>
+    </div>
+
+    <!-- إدارة المخزون -->
+    <div id="inventory" class="card section" style="display:none">
+        <h2>المخزون</h2>
+        <input type="text" id="prodName" placeholder="اسم المنتج"/>
+        <input type="number" id="cost" placeholder="سعر الشراء" min="0"/>
+        <input type="number" id="price" placeholder="سعر البيع" min="0"/>
+        <input type="number" id="qty" placeholder="الكمية" min="0"/>
+        <button class="btn btn-success" onclick="addProduct()">أضف منتج</button>
+        <table id="invTable">
+            <thead><tr><th>الاسم</th><th>سعر الشراء</th><th>سعر البيع</th><th>متوفر</th><th>إجراءات</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <!-- سجل العمليات -->
+    <div id="history" class="card section" style="display:none">
+        <h2>سجل العمليات</h2>
+        <table id="histTable">
+            <thead><tr><th>التاريخ</th><th>المنتجات</th><th>المجموع</th><th>الضريبة</th><th>المدفوع</th><th>الباقي</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+/* -- بيانات من localStorage -- */
+let products = JSON.parse(localStorage.getItem('products')||'[]');
+let sales = JSON.parse(localStorage.getItem('sales')||'[]');
+let invoiceItems=[];
+
+/* يعيد حفظ البيانات */
+function save(){
+    localStorage.setItem('products',JSON.stringify(products));
+    localStorage.setItem('sales',JSON.stringify(sales));
+    refreshInventory();
+    refreshDashboard();
+    refreshHistory();
+}
+
+/* عرض الأقسام */
+function showSection(id){
+    document.querySelectorAll('.section').forEach(s=>s.style.display='none');
+    document.getElementById(id).style.display='block';
+}
+
+/* لوحة dashboard */
+function refreshDashboard(){
+    let totalSales=0, totalProfit=0, itemsSold=0;
+    sales.forEach(s=>{
+        totalSales+=s.total;
+        itemsSold+=s.items.reduce((a,i)=>a+i.qty,0);
+        s.items.forEach(i=>{
+            let p=products.find(x=>x.name==i.name);
+            if(p) totalProfit+=(i.price - p.cost)*i.qty;
+        });
+    });
+    document.getElementById('totalSales').textContent=totalSales.toFixed(2);
+    document.getElementById('totalProfit').textContent=totalProfit.toFixed(2);
+    document.getElementById('itemsSold').textContent=itemsSold;
+}
+
+/* سجل */
+function refreshHistory(){
+    let tbody=document.getElementById('histTable').querySelector('tbody');
+    tbody.innerHTML='';
+    sales.forEach(s=>{
+        let row=document.createElement('tr');
+        row.innerHTML=`<td>${new Date(s.date).toLocaleString()}</td>
+            <td>${s.items.map(i=>i.name+' x'+i.qty).join(', ')}</td>
+            <td>${s.subtotal.toFixed(2)}</td><td>${s.tax.toFixed(2)}</td>
+            <td>${s.paid.toFixed(2)}</td><td>${s.remaining.toFixed(2)}</td>`;
+        tbody.appendChild(row);
+    });
+}
+
+/* المخزون */
+function refreshInventory(){
+    let tbody=document.getElementById('invTable').querySelector('tbody');
+    tbody.innerHTML='';
+    products.forEach((p,idx)=>{
+        let tr=document.createElement('tr');
+        tr.className= p.qty<5?'low-stock':'';
+        tr.innerHTML=`<td>${p.name}</td><td>${p.cost}</td><td>${p.price}</td>
+            <td>${p.qty}</td>
+            <td>
+              <button class="btn btn-warning" onclick="editProduct(${idx})">تعديل</button>
+              <button class="btn btn-danger" onclick="deleteProduct(${idx})">حذف</button>
+            </td>`;
+        tbody.appendChild(tr);
+    });
+    populateList();
+}
+
+/* إضافة / تعديل منتج */
+function addProduct(){
+    let name=document.getElementById('prodName').value.trim();
+    let cost=parseFloat(document.getElementById('cost').value)||0;
+    let price=parseFloat(document.getElementById('price').value)||0;
+    let qty=parseInt(document.getElementById('qty').value)||0;
+    if(!name) return alert('اكتب اسم المنتج');
+    products.push({name,cost,price,qty});
+    document.getElementById('prodName').value='';
+    save();
+}
+function editProduct(i){
+    let p=products[i];
+    let newQty=prompt('الكمية الجديدة',p.qty);
+    if(newQty!==null){p.qty=parseInt(newQty)||0; save();}
+}
+function deleteProduct(i){ if(confirm('حذف؟')){products.splice(i,1);save();} }
+
+/* البحث والاختيار في POS */
+function populateList(){
+    let sel=document.getElementById('productList');
+    sel.innerHTML='';
+    products.forEach((p,i)=>{
+        let opt=document.createElement('option');opt.value=i;opt.text=p.name;sel.add(opt);
+    });
+}
+function searchProduct(){
+    let term=document.getElementById('search').value.trim().toLowerCase();
+    let sel=document.getElementById('productList');
+    Array.from(sel.options).forEach(o=>{
+        o.style.display=o.text.toLowerCase().includes(term)?'':'none';
+    });
+}
+
+/* فاتورة */
+function addItem(){
+    let idx=parseInt(document.getElementById('productList').value);
+    if(isNaN(idx)) return;
+    let p=products[idx];
+    let existing=invoiceItems.find(i=>i.name==p.name);
+    if(existing){ existing.qty++; existing.total=existing.qty*p.price; }
+    else invoiceItems.push({name:p.name,price:p.price,qty:1,total:p.price});
+    renderInvoice();
+}
+function renderInvoice(){
+    let tbody=document.getElementById('invoice').querySelector('tbody');
+    tbody.innerHTML='';
+    invoiceItems.forEach((i,idx)=>{
+        let tr=document.createElement('tr');
+        tr.innerHTML=`<td>${i.name}</td><td>${i.qty}</td><td>${i.price}</td>
+            <td>${i.total.toFixed(2)}</td><td><button onclick="removeItem(${idx})">x</button></td>`;
+        tbody.appendChild(tr);
+    });
+    updateTotals();
+}
+function removeItem(idx){invoiceItems.splice(idx,1);renderInvoice();}
+function updateTotals(){
+    let sub=invoiceItems.reduce((a,i)=>a+i.total,0);
+    document.getElementById('subTotal').textContent=sub.toFixed(2);
+    let taxRate=parseFloat(document.getElementById('taxRate').value)||0;
+    let tax=sub*(taxRate/100);
+    let total=sub+tax;
+    document.getElementById('total').textContent=total.toFixed(2);
+    let paid=parseFloat(document.getElementById('paid').value)||0;
+    document.getElementById('remaining').textContent=(total-paid).toFixed(2);
+}
+function completeSale(){
+    if(invoiceItems.length===0) return;
+    // خصم الكميات
+    invoiceItems.forEach(i=>{
+        let p=products.find(x=>x.name===i.name);
+        if(p) p.qty-=i.qty;
+    });
+    let sub=parseFloat(document.getElementById('subTotal').textContent);
+    let tax=parseFloat(document.getElementById('total').textContent)-sub;
+    let paid=parseFloat(document.getElementById('paid').value)||0;
+    let remaining=parseFloat(document.getElementById('remaining').textContent);
+    sales.push({date:Date.now(),items:JSON.parse(JSON.stringify(invoiceItems)),subtotal:sub,tax,paid,remaining,total:sub+tax});
+    invoiceItems=[]; renderInvoice(); save();
+}
+
+/* ابتدائي */
+refreshInventory();refreshDashboard();refreshHistory();
+</script>
+</body>
+</html>
