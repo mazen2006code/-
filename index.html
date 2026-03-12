@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام الإدارة الذكي | كاشير ومخازن</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #10b981;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--light);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar - القائمة الجانبية */
+        .sidebar {
+            width: 250px;
+            background: var(--dark);
+            color: white;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar h2 { border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            color: white;
+            text-align: right;
+            padding: 15px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: 0.3s;
+        }
+
+        .menu-btn:hover { background: var(--primary); border-radius: 8px; }
+
+        /* Main Content - المحتوى الرئيسي */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Dashboard Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 { color: #64748b; margin: 0; }
+        .stat-card p { font-size: 24px; font-weight: bold; color: var(--dark); margin: 10px 0; }
+
+        /* Forms & Tables */
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        
+        input, select {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+        }
+
+        button.btn-add { background: var(--secondary); color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 6px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f1f5f9; }
+
+        .badge-low { background: #fee2e2; color: #b91c1c; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+
+        /* POS Style */
+        .pos-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>لوحة التحكم</h2>
+        <button class="menu-btn" onclick="showSection('dashboard')">🏠 الرئيسية</button>
+        <button class="menu-btn" onclick="showSection('inventory')">📦 المخزن</button>
+        <button class="menu-btn" onclick="showSection('pos')">🛒 الكاشير (POS)</button>
+        <button class="menu-btn" onclick="showSection('reports')">📊 التقارير</button>
+    </div>
+
+    <div class="main-content">
+        
+        <div id="dashboard" class="section active">
+            <h1>ملخص العمليات</h1>
+            <div class="stats-grid">
+                <div class="stat-card"><h3>إجمالي المبيعات</h3><p id="stat-sales">0 ج.م</p></div>
+                <div class="stat-card"><h3>عدد المنتجات</h3><p id="stat-items">0</p></div>
+                <div class="stat-card"><h3>صافي الربح</h3><p id="stat-profit">0 ج.م</p></div>
+            </div>
+        </div>
+
+        <div id="inventory" class="section">
+            <h1>إدارة المخزون</h1>
+            <div class="card">
+                <input type="text" id="p-name" placeholder="اسم المنتج">
+                <input type="number" id="p-buy" placeholder="سعر الشراء">
+                <input type="number" id="p-sell" placeholder="سعر البيع">
+                <input type="number" id="p-qty" placeholder="الكمية">
+                <button class="btn-add" onclick="addProduct()">إضافة منتج</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>المنتج</th>
+                        <th>سعر البيع</th>
+                        <th>الكمية</th>
+                        <th>الحالة</th>
+                        <th>إجراء</th>
+                    </tr>
+                </thead>
+                <tbody id="inventory-table"></tbody>
+            </table>
+        </div>
+
+        <div id="pos" class="section">
+            <h1>نظام البيع (POS)</h1>
+            <div class="pos-grid">
+                <div class="card">
+                    <h3>الفاتورة الحالية</h3>
+                    <table id="cart-table">
+                        <thead><tr><th>المنتج</th><th>السعر</th><th>الكمية</th><th>المجموع</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    <h2 style="text-align: left;">الإجمالي: <span id="cart-total">0</span> ج.م</h2>
+                    <button class="btn-add" style="width: 100%; background: var(--primary);" onclick="checkout()">إتمام البيع وطباعة</button>
+                </div>
+                <div class="card">
+                    <h3>اختر المنتج</h3>
+                    <div id="pos-products-list"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // البيانات الأساسية
+        let products = JSON.parse(localStorage.getItem('products')) || [];
+        let sales = JSON.parse(localStorage.getItem('sales')) || [];
+        let cart = [];
+
+        // التنقل بين الأقسام
+        function showSection(id) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            updateStats();
+            if(id === 'inventory') renderInventory();
+            if(id === 'pos') renderPOSProducts();
+        }
+
+        // إضافة منتج للمخزن
+        function addProduct() {
+            const product = {
+                id: Date.now(),
+                name: document.getElementById('p-name').value,
+                buyPrice: parseFloat(document.getElementById('p-buy').value),
+                sellPrice: parseFloat(document.getElementById('p-sell').value),
+                qty: parseInt(document.getElementById('p-qty').value)
+            };
+            products.push(product);
+            saveData();
+            renderInventory();
+        }
+
+        function renderInventory() {
+            const tbody = document.getElementById('inventory-table');
+            tbody.innerHTML = products.map(p => `
+                <tr>
+                    <td>${p.name}</td>
+                    <td>${p.sellPrice} ج.م</td>
+                    <td>${p.qty}</td>
+                    <td>${p.qty < 5 ? '<span class="badge-low">نقص مخزون</span>' : 'متوفر'}</td>
+                    <td><button onclick="deleteProduct(${p.id})" style="color:red; border:none; background:none; cursor:pointer;">حذف</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function renderPOSProducts() {
+            const list = document.getElementById('pos-products-list');
+            list.innerHTML = products.map(p => `
+                <div onclick="addToCart(${p.id})" style="padding:10px; border:1px solid #eee; margin:5px; cursor:pointer; background:#f9f9f9; border-radius:8px;">
+                    ${p.name} - ${p.sellPrice} ج.م (متاح: ${p.qty})
+                </div>
+            `).join('');
+        }
+
+        function addToCart(id) {
+            const product = products.find(p => p.id === id);
+            if(product.qty <= 0) return alert('المنتج غير متوفر في المخزن!');
+            
+            cart.push({...product});
+            renderCart();
+        }
+
+        function renderCart() {
+            const tbody = document.querySelector('#cart-table tbody');
+            let total = 0;
+            tbody.innerHTML = cart.map(item => {
+                total += item.sellPrice;
+                return `<tr><td>${item.name}</td><td>${item.sellPrice}</td><td>1</td><td>${item.sellPrice}</td></tr>`;
+            }).join('');
+            document.getElementById('cart-total').innerText = total;
+        }
+
+        function checkout() {
+            if(cart.length === 0) return;
+            
+            cart.forEach(item => {
+                const pIndex = products.findIndex(p => p.id === item.id);
+                products[pIndex].qty -= 1; // خصم من المخزن
+                sales.push({ date: new Date(), amount: item.sellPrice, profit: item.sellPrice - item.buyPrice });
+            });
+
+            cart = [];
+            saveData();
+            renderCart();
+            alert('تمت عملية البيع بنجاح!');
+            showSection('dashboard');
+        }
+
+        function updateStats() {
+            const totalSales = sales.reduce((sum, s) => sum + s.amount, 0);
+            const totalProfit = sales.reduce((sum, s) => sum + s.profit, 0);
+            document.getElementById('stat-sales').innerText = totalSales + ' ج.م';
+            document.getElementById('stat-items').innerText = products.length;
+            document.getElementById('stat-profit').innerText = totalProfit + ' ج.م';
+        }
+
+        function saveData() {
+            localStorage.setItem('products', JSON.stringify(products));
+            localStorage.setItem('sales', JSON.stringify(sales));
+        }
+
+        function deleteProduct(id) {
+            products = products.filter(p => p.id !== id);
+            saveData();
+            renderInventory();
+        }
+
+        // تشغيل الإحصائيات عند الفتح
+        updateStats();
+    </script>
+</body>
+</html>
