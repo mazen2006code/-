@@ -6,4 +6,8 @@ let sales = JSON.parse(localStorage.getItem('sales')) || [];
 function saveData() {
     localStorage.setItem('products', JSON.stringify(products));
     localStorage.setItem('sales', JSON.stringify(sales));
+}function searchProducts() {
+    let term = document.getElementById('pos-search').value.toLowerCase();
+    let filtered = products.filter(p => p.name.toLowerCase().includes(term));
+    renderPOSProducts(filtered); // نحدث القائمة بناءً على البحث
 }
