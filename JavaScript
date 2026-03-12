@@ -1,0 +1,9 @@
+// استدعاء البيانات باستخدام نفس الاسم 'products' و 'sales'
+let products = JSON.parse(localStorage.getItem('products')) || [];
+let sales = JSON.parse(localStorage.getItem('sales')) || [];
+
+// دالة الحفظ يجب أن تستخدم نفس الأسماء أيضاً في الملفين
+function saveData() {
+    localStorage.setItem('products', JSON.stringify(products));
+    localStorage.setItem('sales', JSON.stringify(sales));
+}
