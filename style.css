@@ -1,0 +1,18 @@
+ <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #10b981;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --light: #f8fafc;
+  <style>
+/* ---- عام ---- */
+body{font-family:Tahoma, Arial;margin:0;padding:0;background:#f4f4f4;color:#333}
+.container{max-width:1200px;margin:auto;padding:20px}
+h1,h2{margin:10px 0}
+.btn{display:inline-block;padding:8px 15px;margin:2px;border:none;cursor:pointer;border-radius:3px}
+.btn-primary{background:#007bff;color:#fff}
+.btn-danger{background:#dc3545;color:#fff}
+.btn-success{background:#28a745;color:#fff}
+.btn-warning{background:#ffc107;color:#333}
+          
