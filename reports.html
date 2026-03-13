@@ -1,0 +1,23 @@
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head><div style="width: 80%; margin: auto;">
+    <canvas id="salesChart"></canvas>
+</div>
+
+<script>
+    // كود تشغيل الرسم البياني بناءً على بيانات المبيعات
+    const salesData = JSON.parse(localStorage.getItem('sales')) || [];
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line', // نوع الرسم (خطي)
+        data: {
+            labels: salesData.map(s => new Date(s.date).toLocaleDateString()),
+            datasets: [{
+                label: 'المبيعات اليومية',
+                data: salesData.map(s => s.amount),
+                borderColor: '#2563eb',
+                fill: false
+            }]
+        }
+    });
+</script>
